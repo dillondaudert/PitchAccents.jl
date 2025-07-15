@@ -1,3 +1,4 @@
-[deps]
-CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+name = "PitchAccents"
+uuid = "17b02be6-7a8e-4cad-b0c5-5620b50c6124"
+authors = ["dillondaudert "]
+version = "0.1.0"

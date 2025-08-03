@@ -10,6 +10,8 @@ Scrape the first 20 results from OJAD default search and extract word and accent
 function scrape_ojad_default()
     # OJAD default search URL (no filters)
     url = "https://www.gavo.t.u-tokyo.ac.jp/ojad/search/index"
+    # URL for just nouns, which only have a dictionary from
+    noun_url = "https://www.gavo.t.u-tokyo.ac.jp/ojad/search/index/category:6"
     
     println("Fetching OJAD search results...")
     
@@ -24,7 +26,7 @@ function scrape_ojad_default()
     
     try
         # Fetch the page
-        response = HTTP.get(url, headers=headers)
+        response = HTTP.get(noun_url, headers=headers)
         
         # Parse HTML
         doc = parsehtml(String(response.body))
@@ -34,25 +36,6 @@ function scrape_ojad_default()
         # Look for the results table
         table_selector = Selector("#word_table tbody tr")
         rows = eachmatch(table_selector, doc.root)
-        
-        if isempty(rows)
-            println("No table rows found. Trying alternative selectors...")
-            # Try alternative selectors
-            alt_selectors = [
-                "table tbody tr",
-                ".search-results tr",
-                "tr"
-            ]
-            
-            for selector_str in alt_selectors
-                selector = Selector(selector_str)
-                rows = eachmatch(selector, doc.root)
-                if !isempty(rows)
-                    println("Found $(length(rows)) rows with selector: $selector_str")
-                    break
-                end
-            end
-        end
         
         if isempty(rows)
             println("No data rows found. Let's examine the page structure...")
@@ -67,77 +50,27 @@ function scrape_ojad_default()
         println("\nExtracting word and accent data...")
         println("=" ^ 50)
         
-        count = 0
-        for (i, row) in enumerate(rows)
-            if count >= 20
-                break
-            end
+        for row in rows
             
-            # Extract text from all cells in the row
-            cells = eachmatch(Selector("td"), row)
+            # The word is in the headline midashi cell.
+            headline_sel = Selector("td .midashi .midashi_wrapper .midashi_word")
+            headline = nodeText(eachmatch(headline_sel, row)[1])
+            println(headline)
+
+            # The jisho form and pitch accent are in the katsuyo_jisho class, under 'accented_word' as a series of 
+            # nodes that together define the overall pitch.
+            jisho_sel = Selector("td .katsuyo_jisho_js .katsuyo_proc p .katsuyo_accent .accented_word")
+            jisho_node = eachmatch(jisho_sel, row)[1]
+            # now we iterate through each child 'mola-...' nodes.
+            # the mora that has the accent, if any, will have the class 'accent_top'. 
+            # Before the 'accent_top', the preceding morae (but not the first mora) will have
+            # the class 'accent_plain'.
+            # heiban will have no 'accent_top'. 
+            morae = []
+            println(jisho_node)
             
-            if !isempty(cells)
-                count += 1
-                
-                # Extract word (typically in first column)
-                word = ""
-                accent_type = ""
-                
-                # Get text from first cell (word)
-                if length(cells) >= 1
-                    word_cell = cells[1]
-                    word = strip(nodeText(word_cell))
-                end
-                
-                # Look for accent information in subsequent cells or attributes
-                for cell in cells
-                    cell_text = strip(nodeText(cell))
-                    # Look for accent type patterns
-                    if occursin(r"[0-9]+型|平板|頭高|中高|尾高", cell_text)
-                        accent_type = cell_text
-                        break
-                    end
-                end
-                
-                # If no accent info found in cells, check for data attributes or classes
-                if isempty(accent_type)
-                    # Check for class names that might indicate accent type
-                    for cell in cells
-                        if haskey(attrs(cell), "class")
-                            class_attr = attrs(cell)["class"]
-                            if occursin(r"accent|type", class_attr)
-                                accent_type = "Class: $class_attr"
-                                break
-                            end
-                        end
-                    end
-                end
-                
-                if isempty(accent_type)
-                    accent_type = "Unknown"
-                end
-                
-                println("$count. Word: '$word' | Accent: '$accent_type'")
-            end
         end
-        
-        if count == 0
-            println("No valid word entries found in table rows.")
-            println("\nDebug: Examining page structure...")
-            
-            # Look for any text that might contain Japanese words
-            all_text = nodeText(doc.root)
-            japanese_matches = collect(eachmatch(r"[\p{Hiragana}\p{Katakana}\p{Han}]+", all_text))
-            
-            if !isempty(japanese_matches)
-                println("Found Japanese text in page:")
-                for (i, match) in enumerate(japanese_matches[1:min(10, end)])
-                    println("  $i. $(match.match)")
-                end
-            else
-                println("No Japanese text found in page content.")
-            end
-        end
+        return
         
     catch e
         println("Error occurred: $e")

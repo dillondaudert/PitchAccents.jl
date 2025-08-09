@@ -2,6 +2,9 @@
 Types for representing Japanese words with pitch accent information.
 """
 
+using JSON3
+using CodecZlib
+
 """
 Represents a Japanese word with its kanji form (if present), phonetic representation as morae,
 and pitch accent pattern. This struct is designed to be hashable for use in hashmaps.
@@ -65,3 +68,44 @@ reading(w::JapaneseWord) = join(w.morae, "")
 Get the number of morae in the word.
 """
 mora_count(w::JapaneseWord) = length(w.morae)
+
+# JSON3 serialization support
+JSON3.StructType(::Type{JapaneseWord}) = JSON3.Struct()
+
+"""
+Save a collection of JapaneseWord objects to a compressed JSONL file.
+Each word is written as one JSON object per line.
+"""
+function save_words(words, filename::String)
+    # Ensure .jsonl.gz extension
+    if !endswith(filename, ".jsonl.gz")
+        filename = filename * ".jsonl.gz"
+    end
+    
+    open(GzipCompressorStream, filename, "w") do io
+        for word in words
+            println(io, JSON3.write(word))
+        end
+    end
+end
+
+"""
+Load JapaneseWord objects from a compressed JSONL file.
+Returns a Vector{JapaneseWord}.
+"""
+function load_words(filename::String)
+    # Handle both with and without .jsonl.gz extension
+    if !endswith(filename, ".jsonl.gz")
+        filename = filename * ".jsonl.gz"
+    end
+    
+    words = JapaneseWord[]
+    open(GzipDecompressorStream, filename, "r") do io
+        for line in eachline(io)
+            isempty(strip(line)) && continue  # Skip empty lines
+            word = JSON3.read(line, JapaneseWord)
+            push!(words, word)
+        end
+    end
+    return words
+end

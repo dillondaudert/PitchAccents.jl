@@ -123,6 +123,8 @@ function scrape_ojad_default()
         
         total_pages = get_total_pages(doc)
         println("Found $total_pages total pages")
+
+        words::Vector{JapaneseWord} = JapaneseWord[]
         
         # Process all pages
         for page in 1:total_pages
@@ -167,9 +169,12 @@ function scrape_ojad_default()
                 morae, accent_idx = parse_accented_word(jisho_node)
                 kanji_word = JapaneseWord(headline, morae, accent_idx)
                 println(kanji_word)
+                push!(words, kanji_word)
             end
             break
         end
+
+        save_words(words, "saved_words")
         
         println("\nCompleted scraping all $total_pages pages")
         

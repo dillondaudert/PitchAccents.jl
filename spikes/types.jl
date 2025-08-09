@@ -10,7 +10,7 @@ Represents a Japanese word with its kanji form (if present), phonetic representa
 and pitch accent pattern. This struct is designed to be hashable for use in hashmaps.
 
 Fields:
-- `kanji`: The kanji representation of the word (empty string if kana-only)
+- `kanji`: The kanji representation of the word (or kana, if no kanji, or katakana word, etc)
 - `morae`: Tuple of mora strings representing the phonetic form
 - `accent_idx`: Index of the accent (1-based, 0 for heiban/accentless)
 

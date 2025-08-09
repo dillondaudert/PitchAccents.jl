@@ -163,18 +163,21 @@ function scrape_ojad_default()
                 headline = nodeText(eachmatch(headline_sel, row)[1])
 
                 # The jisho form and pitch accent are in the katsuyo_jisho class, under 'accented_word' as a series of 
-                # nodes that together define the overall pitch.
+                # nodes that together define the overall pitch. There can be MULTIPLE accent patterns per word.
                 jisho_sel = Selector("td .katsuyo_jisho_js .katsuyo_proc p .katsuyo_accent .accented_word")
-                jisho_node = eachmatch(jisho_sel, row)[1]
-                morae, accent_idx = parse_accented_word(jisho_node)
-                kanji_word = JapaneseWord(headline, morae, accent_idx)
-                println(kanji_word)
-                push!(words, kanji_word)
+                jisho_nodes = eachmatch(jisho_sel, row)
+                
+                # Process each accent pattern for this word
+                for jisho_node in jisho_nodes
+                    morae, accent_idx = parse_accented_word(jisho_node)
+                    kanji_word = JapaneseWord(headline, morae, accent_idx)
+                    println(kanji_word)
+                    push!(words, kanji_word)
+                end
             end
-            break
         end
 
-        save_words(words, "saved_words.jsonl")
+        save_words(words, "ojad_nouns.jsonl")
         
         println("\nCompleted scraping all $total_pages pages")
         

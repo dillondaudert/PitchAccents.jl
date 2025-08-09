@@ -24,3 +24,6 @@ docs/site/
 Manifest.toml
 
 .vscode/
+
+# saved words in json files
+*.jsonl

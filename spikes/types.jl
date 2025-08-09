@@ -73,39 +73,55 @@ mora_count(w::JapaneseWord) = length(w.morae)
 JSON3.StructType(::Type{JapaneseWord}) = JSON3.Struct()
 
 """
-Save a collection of JapaneseWord objects to a compressed JSONL file.
+Save a collection of JapaneseWord objects to a JSONL file.
 Each word is written as one JSON object per line.
+If filename contains ".gz", the file will be compressed.
 """
 function save_words(words, filename::String)
-    # Ensure .jsonl.gz extension
-    if !endswith(filename, ".jsonl.gz")
-        filename = filename * ".jsonl.gz"
-    end
-    
-    open(GzipCompressorStream, filename, "w") do io
-        for word in words
-            println(io, JSON3.write(word))
+    if occursin(".gz", filename)
+        # Write compressed file
+        open(GzipCompressorStream, filename, "w") do io
+            for word in words
+                println(io, JSON3.write(word))
+            end
+        end
+    else
+        # Write uncompressed file
+        open(filename, "w") do io
+            for word in words
+                println(io, JSON3.write(word))
+            end
         end
     end
 end
 
 """
-Load JapaneseWord objects from a compressed JSONL file.
+Load JapaneseWord objects from a JSONL file.
+If filename contains ".gz", the file will be decompressed automatically.
 Returns a Vector{JapaneseWord}.
 """
 function load_words(filename::String)
-    # Handle both with and without .jsonl.gz extension
-    if !endswith(filename, ".jsonl.gz")
-        filename = filename * ".jsonl.gz"
-    end
-    
     words = JapaneseWord[]
-    open(GzipDecompressorStream, filename, "r") do io
-        for line in eachline(io)
-            isempty(strip(line)) && continue  # Skip empty lines
-            word = JSON3.read(line, JapaneseWord)
-            push!(words, word)
+    
+    if occursin(".gz", filename)
+        # Read compressed file
+        open(GzipDecompressorStream, filename, "r") do io
+            for line in eachline(io)
+                isempty(strip(line)) && continue  # Skip empty lines
+                word = JSON3.read(line, JapaneseWord)
+                push!(words, word)
+            end
+        end
+    else
+        # Read uncompressed file
+        open(filename, "r") do io
+            for line in eachline(io)
+                isempty(strip(line)) && continue  # Skip empty lines
+                word = JSON3.read(line, JapaneseWord)
+                push!(words, word)
+            end
         end
     end
+    
     return words
 end

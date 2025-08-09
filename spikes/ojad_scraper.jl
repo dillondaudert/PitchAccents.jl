@@ -174,7 +174,7 @@ function scrape_ojad_default()
             break
         end
 
-        save_words(words, "saved_words")
+        save_words(words, "saved_words.jsonl")
         
         println("\nCompleted scraping all $total_pages pages")
         

@@ -20,10 +20,10 @@ as the same word unit.
 """
 struct JapaneseWord
     kanji::String
-    morae::Tuple{Vararg{String}}
+    morae::Vector{String}
     accent_idx::Int
     
-    function JapaneseWord(kanji::String, morae::Tuple{Vararg{String}}, accent_idx::Int)
+    function JapaneseWord(kanji::String, morae::Vector{String}, accent_idx::Int)
         # Validation
         if accent_idx < 0
             throw(ArgumentError("accent_idx must be non-negative (0 for heiban)"))
@@ -37,7 +37,7 @@ struct JapaneseWord
 end
 
 # Constructor for kana-only words
-JapaneseWord(morae::Tuple{Vararg{String}}, accent_idx::Int) = JapaneseWord("", morae, accent_idx)
+JapaneseWord(morae::Vector{String}, accent_idx::Int) = JapaneseWord("", morae, accent_idx)
 
 # Implement hash and equality for hashmap usage
 Base.hash(w::JapaneseWord, h::UInt) = hash((w.kanji, w.morae, w.accent_idx), h)

@@ -4,6 +4,30 @@ using HTTP
 using Gumbo
 using Cascadia
 
+
+# Helper function to extract text content from a node
+function nodeText(node)
+    if isa(node, HTMLText)
+        return node.text
+    elseif isa(node, HTMLElement)
+        return join([nodeText(child) for child in node.children], "")
+    else
+        return ""
+    end
+end
+
+"""
+    parse_midashi
+
+Split the headline (midashi) on the separators for masu-desu, い, な adjectives.
+Return just the jisho form headline.
+"""
+function parse_midashi(headline)
+    sep_re = r"(\[な\])?・"
+    midashi = split(headline, sep_re)[1]
+    return midashi
+end
+
 """
 Given an `accented_word` node, of the following example format 
 (this word is heiban):
@@ -98,32 +122,21 @@ function get_total_pages(doc)
 end
 
 """
-Scrape all results from OJAD nouns and extract word and accent type.
+Scrape jisho form for all nouns from OJAD, returning a list of JapaneseWord structs.
 """
-function scrape_ojad_default()
-    # Base URL for nouns
-    base_url = "https://www.gavo.t.u-tokyo.ac.jp/ojad/search/index/category:6/limit:100"
+function _scrape_ojad_url(url, headers)
     
-    println("Fetching OJAD search results...")
-    
-    # Set headers to avoid being blocked
-    headers = [
-        "User-Agent" => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        "Accept" => "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language" => "en-US,en;q=0.5",
-        "Accept-Encoding" => "gzip, deflate",
-        "Connection" => "keep-alive"
-    ]
-    
+    println("Fetching search results for $url...")
+
     try
         # First, get the first page to determine total pages
-        response = HTTP.get(base_url, headers=headers)
+        response = HTTP.get(url, headers=headers)
         doc = parsehtml(String(response.body))
         
         total_pages = get_total_pages(doc)
         println("Found $total_pages total pages")
 
-        words::Vector{JapaneseWord} = JapaneseWord[]
+        words = JapaneseWord[]
         
         # Process all pages
         for page in 1:total_pages
@@ -133,9 +146,10 @@ function scrape_ojad_default()
             
             # Construct URL for current page
             page_url = if page == 1
-                base_url
+                url
             else
-                "$base_url/page:$page"
+                return words # EARLY STOP FOR NOW
+                "$url/page:$page"
             end
             
             # Fetch page if not the first one (already fetched)
@@ -147,6 +161,7 @@ function scrape_ojad_default()
             
             # Look for the results table
             table_selector = Selector("#word_table tbody tr")
+            # Rows of words, each will have multiple 活動 katsudo
             rows = eachmatch(table_selector, doc.root)
             
             if isempty(rows)
@@ -159,24 +174,23 @@ function scrape_ojad_default()
             for row in rows
                 # The word is in the headline midashi cell.
                 headline_sel = Selector("td .midashi .midashi_wrapper .midashi_word")
-                headline = nodeText(eachmatch(headline_sel, row)[1])
+                midashi = parse_midashi(nodeText(eachmatch(headline_sel, row)[1]))
 
                 # The jisho form and pitch accent are in the katsuyo_jisho class, under 'accented_word' as a series of 
                 # nodes that together define the overall pitch. There can be MULTIPLE accent patterns per word.
                 jisho_sel = Selector("td .katsuyo_jisho_js .katsuyo_proc p .katsuyo_accent .accented_word")
                 jisho_nodes = eachmatch(jisho_sel, row)
                 
-                # Process each accent pattern for this word
+                # Process each accent pattern for this word, saved as a different struct
+                # NOTE: If there are no jisho nodes, this word won't be recorded (correct behavior)
                 for jisho_node in jisho_nodes
                     morae, accent_idx = parse_accented_word(jisho_node)
-                    kanji_word = JapaneseWord(headline, morae, accent_idx)
+                    kanji_word = JapaneseWord(midashi, morae, accent_idx)
                     println(kanji_word)
                     push!(words, kanji_word)
                 end
             end
         end
-
-        save_words(words, "ojad_nouns.jsonl")
         
         println("\nCompleted scraping all $total_pages pages")
         
@@ -188,20 +202,37 @@ function scrape_ojad_default()
             println(String(e.response.body)[1:min(500, end)])
         end
     end
+
+    return words
+
 end
 
-# Helper function to extract text content from a node
-function nodeText(node)
-    if isa(node, HTMLText)
-        return node.text
-    elseif isa(node, HTMLElement)
-        return join([nodeText(child) for child in node.children], "")
-    else
-        return ""
+"""
+Scrape all results from OJAD nouns, verbs, and adjectives. Jisho form only for now.
+Save the results into the designated file.
+"""
+function scrape_ojad(outfile)
+    
+    noun_url = "https://www.gavo.t.u-tokyo.ac.jp/ojad/search/index/category:6/limit:100"
+    i_adj_url = "https://www.gavo.t.u-tokyo.ac.jp/ojad/search/index/category:4/limit:100"
+    na_adj_url = "https://www.gavo.t.u-tokyo.ac.jp/ojad/search/index/category:5/limit:100"
+    verb_url = "https://www.gavo.t.u-tokyo.ac.jp/ojad/search/index/category:verb/limit:100"
+    urls = [noun_url, i_adj_url, na_adj_url, verb_url]
+    
+    # Set headers to avoid being blocked
+    headers = [
+        "User-Agent" => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "Accept" => "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language" => "en-US,en;q=0.5",
+        "Accept-Encoding" => "gzip, deflate",
+        "Connection" => "keep-alive"
+    ]
+
+    words = JapaneseWord[]
+    for url in urls
+        append!(words, _scrape_ojad_url(url, headers))
     end
-end
 
-# Run the scraper
-if abspath(PROGRAM_FILE) == @__FILE__
-    scrape_ojad_default()
+    save_words(words, outfile)
+    
 end

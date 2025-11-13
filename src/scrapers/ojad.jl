@@ -3,7 +3,6 @@
 using HTTP
 using Gumbo
 using Cascadia
-include("types.jl")
 
 """
 Given an `accented_word` node, of the following example format 

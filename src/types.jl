@@ -10,7 +10,7 @@ Represents a Japanese word with its kanji form (if present), phonetic representa
 and pitch accent pattern. This struct is designed to be hashable for use in hashmaps.
 
 Fields:
-- `kanji`: The kanji representation of the word (or kana, if no kanji, or katakana word, etc)
+- `midashi`: The common representation of the word (kanji, kana, if no kanji, or katakana word, etc)
 - `morae`: Tuple of mora strings representing the phonetic form
 - `accent_idx`: Index of the accent (1-based, 0 for heiban/accentless)
 
@@ -19,11 +19,11 @@ for deduplication where the same pronunciation+accent with multiple meanings is 
 as the same word unit.
 """
 struct JapaneseWord
-    kanji::String
+    midashi::String
     morae::Vector{String}
     accent_idx::Int
     
-    function JapaneseWord(kanji::String, morae::Vector{String}, accent_idx::Int)
+    function JapaneseWord(midashi::String, morae::Vector{String}, accent_idx::Int)
         # Validation
         if accent_idx < 0
             throw(ArgumentError("accent_idx must be non-negative (0 for heiban)"))
@@ -32,7 +32,7 @@ struct JapaneseWord
             throw(ArgumentError("accent_idx cannot exceed number of morae"))
         end
         
-        new(kanji, morae, accent_idx)
+        new(midashi, morae, accent_idx)
     end
 end
 

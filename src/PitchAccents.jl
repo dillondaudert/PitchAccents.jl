@@ -1,5 +1,6 @@
 module PitchAccents
 
-greet() = print("Hello World!")
+include("types.jl")
+include("scrapers/ojad.jl")
 
 end # module PitchAccents

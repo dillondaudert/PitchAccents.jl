@@ -27,3 +27,6 @@ Manifest.toml
 
 # saved words in json files
 *.jsonl
+
+# data folder
+data/**

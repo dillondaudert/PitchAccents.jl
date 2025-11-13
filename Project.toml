@@ -1,4 +1,21 @@
 name = "PitchAccents"
 uuid = "17b02be6-7a8e-4cad-b0c5-5620b50c6124"
-authors = ["dillondaudert "]
 version = "0.1.0"
+authors = ["Dillon Daudert"]
+
+[deps]
+Cascadia = "54eefc05-d75b-58de-a785-1a3403f0919f"
+CodecZlib = "944b1d66-785c-5afd-91f1-9de20f533193"
+Gumbo = "708ec375-b3d6-5a57-a7ce-8257bf98657a"
+HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
+StructTypes = "856f2bd8-1eba-4b0a-8007-ebc267875bd4"
+
+[compat]
+Cascadia = "1.0.2"
+CodecZlib = "0.7.8"
+Gumbo = "0.8.3"
+HTTP = "1.10.19"
+JSON3 = "1.14.3"
+StructTypes = "1.11.0"
+julia = "1.12"

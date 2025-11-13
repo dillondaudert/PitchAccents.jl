@@ -155,7 +155,7 @@ function _scrape_ojad_url(url, headers, part_of_speech::String)
             if page > 1
                 response = HTTP.get(page_url, headers=headers)
                 doc = parsehtml(String(response.body))
-                sleep(1)  # Be respectful with rate limiting
+                sleep(.4)  # Be respectful with rate limiting
             end
             
             # Look for the results table
@@ -173,7 +173,13 @@ function _scrape_ojad_url(url, headers, part_of_speech::String)
             for row in rows
                 # The word is in the headline midashi cell.
                 headline_sel = Selector("td .midashi .midashi_wrapper .midashi_word")
-                midashi = parse_midashi(nodeText(eachmatch(headline_sel, row)[1]))
+                local midashi
+                try
+                    midashi = parse_midashi(nodeText(eachmatch(headline_sel, row)[1]))
+                catch
+                    println("Row $row didn't have a headline, skipping")
+                    continue
+                end
 
                 # The jisho form and pitch accent are in the katsuyo_jisho class, under 'accented_word' as a series of 
                 # nodes that together define the overall pitch. There can be MULTIPLE accent patterns per word.

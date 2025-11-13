@@ -25,7 +25,7 @@ Return just the jisho form headline.
 function parse_midashi(headline)
     sep_re = r"(\[な\])?・"
     midashi = split(headline, sep_re)[1]
-    return midashi
+    return String(midashi)
 end
 
 """
@@ -64,7 +64,7 @@ of the morae comprising the word, the second element is an integer index
 where the accent is (or 0 for accentless). 
 """
 function parse_accented_word(node)
-    morae = []
+    morae = String[]
     accent_idx = 0
     
     # Find all mola span elements that contain the mora characters
@@ -86,7 +86,7 @@ function parse_accented_word(node)
         end
     end
     
-    return (tuple(morae...), accent_idx)
+    return (morae, accent_idx)
 end
 
 """
@@ -124,7 +124,7 @@ end
 """
 Scrape jisho form for all nouns from OJAD, returning a list of JapaneseWord structs.
 """
-function _scrape_ojad_url(url, headers)
+function _scrape_ojad_url(url, headers, part_of_speech::String)
     
     println("Fetching search results for $url...")
 
@@ -148,7 +148,6 @@ function _scrape_ojad_url(url, headers)
             page_url = if page == 1
                 url
             else
-                return words # EARLY STOP FOR NOW
                 "$url/page:$page"
             end
             
@@ -185,7 +184,7 @@ function _scrape_ojad_url(url, headers)
                 # NOTE: If there are no jisho nodes, this word won't be recorded (correct behavior)
                 for jisho_node in jisho_nodes
                     morae, accent_idx = parse_accented_word(jisho_node)
-                    kanji_word = JapaneseWord(midashi, morae, accent_idx)
+                    kanji_word = JapaneseWord(midashi, morae, accent_idx, part_of_speech)
                     println(kanji_word)
                     push!(words, kanji_word)
                 end
@@ -193,6 +192,7 @@ function _scrape_ojad_url(url, headers)
         end
         
         println("\nCompleted scraping all $total_pages pages")
+        return words
         
     catch e
         println("Error occurred: $e")
@@ -201,9 +201,8 @@ function _scrape_ojad_url(url, headers)
             println("Response body preview:")
             println(String(e.response.body)[1:min(500, end)])
         end
+        error()
     end
-
-    return words
 
 end
 
@@ -217,7 +216,7 @@ function scrape_ojad(outfile)
     i_adj_url = "https://www.gavo.t.u-tokyo.ac.jp/ojad/search/index/category:4/limit:100"
     na_adj_url = "https://www.gavo.t.u-tokyo.ac.jp/ojad/search/index/category:5/limit:100"
     verb_url = "https://www.gavo.t.u-tokyo.ac.jp/ojad/search/index/category:verb/limit:100"
-    urls = [noun_url, i_adj_url, na_adj_url, verb_url]
+    urls = [(noun_url, "noun"), (i_adj_url, "adjective"), (na_adj_url, "adjective"), (verb_url, "verb")]
     
     # Set headers to avoid being blocked
     headers = [
@@ -229,8 +228,8 @@ function scrape_ojad(outfile)
     ]
 
     words = JapaneseWord[]
-    for url in urls
-        append!(words, _scrape_ojad_url(url, headers))
+    for (url, pos) in urls
+        append!(words, _scrape_ojad_url(url, headers, pos))
     end
 
     save_words(words, outfile)

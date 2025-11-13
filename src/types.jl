@@ -22,8 +22,9 @@ struct JapaneseWord
     midashi::String
     morae::Vector{String}
     accent_idx::Int
+    part_of_speech::String
     
-    function JapaneseWord(midashi::String, morae::Vector{String}, accent_idx::Int)
+    function JapaneseWord(midashi::String, morae::Vector{String}, accent_idx::Int, part_of_speech::String)
         # Validation
         if accent_idx < 0
             throw(ArgumentError("accent_idx must be non-negative (0 for heiban)"))
@@ -32,26 +33,26 @@ struct JapaneseWord
             throw(ArgumentError("accent_idx cannot exceed number of morae"))
         end
         
-        new(midashi, morae, accent_idx)
+        new(midashi, morae, accent_idx, part_of_speech)
     end
 end
 
 # Constructor for kana-only words
-JapaneseWord(morae::Vector{String}, accent_idx::Int) = JapaneseWord("", morae, accent_idx)
+JapaneseWord(morae::Vector{String}, accent_idx::Int, pos::String) = JapaneseWord("", morae, accent_idx, pos)
 
 # Implement hash and equality for hashmap usage
-Base.hash(w::JapaneseWord, h::UInt) = hash((w.kanji, w.morae, w.accent_idx), h)
+Base.hash(w::JapaneseWord, h::UInt) = hash((w.midashi, w.morae, w.accent_idx, w.part_of_speech), h)
 Base.:(==)(w1::JapaneseWord, w2::JapaneseWord) = 
-    w1.kanji == w2.kanji && w1.morae == w2.morae && w1.accent_idx == w2.accent_idx
+    w1.midashi == w2.midashi && w1.morae == w2.morae && w1.accent_idx == w2.accent_idx && w1.part_of_speech == w2.part_of_speech
 
 # Pretty printing
 function Base.show(io::IO, w::JapaneseWord)
-    kanji_part = isempty(w.kanji) ? "" : "$(w.kanji)["
+    kanji_part = isempty(w.midashi) ? "" : "$(w.midashi)["
     mora_str = join(w.morae, "")
     accent_str = w.accent_idx == 0 ? "0" : "$(w.accent_idx)"
-    kanji_end = isempty(w.kanji) ? "" : "]"
+    kanji_end = isempty(w.midashi) ? "" : "]"
     
-    print(io, "$(kanji_part)$(mora_str)$(kanji_end) ($(accent_str))")
+    print(io, "$(kanji_part)$(mora_str)$(kanji_end) ($(accent_str)) $(w.part_of_speech)")
 end
 
 """
